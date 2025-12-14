@@ -1149,9 +1149,10 @@ Return Value:
 
         } else {
 
-            sprintf( deviceNameBuffer,
-                     "\\Device\\Harddisk%d\\Partition0",
-                     diskNumber );
+            _snprintf( deviceNameBuffer,
+                       sizeof(deviceNameBuffer),
+                       "\\Device\\Harddisk%d\\Partition0",
+                       diskNumber );
             
             RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
             status = RtlAnsiStringToUnicodeString( &deviceNameUnicodeString,
@@ -1378,14 +1379,16 @@ Return Value:
 
                 if (pnpDiskDeviceNumber.DeviceNumber == 0xFFFFFFFF) {
 
-                    sprintf( deviceNameBuffer,
-                             "\\Device\\Harddisk%d\\Partition0",
-                             diskNumber );
+                    _snprintf( deviceNameBuffer,
+                               sizeof(deviceNameBuffer),
+                               "\\Device\\Harddisk%d\\Partition0",
+                               diskNumber );
                 } else {
 
-                    sprintf( deviceNameBuffer,
-                             "\\Device\\Harddisk%d\\Partition0",
-                             pnpDiskDeviceNumber.DeviceNumber );
+                    _snprintf( deviceNameBuffer,
+                               sizeof(deviceNameBuffer),
+                               "\\Device\\Harddisk%d\\Partition0",
+                               pnpDiskDeviceNumber.DeviceNumber );
                 }
 
                 RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
@@ -1407,9 +1410,10 @@ Return Value:
 
                 arcName = diskBlock->ArcName;
 
-                sprintf( arcNameBuffer,
-                         "\\ArcName\\%s",
-                         arcName );
+                _snprintf( arcNameBuffer,
+                           sizeof(arcNameBuffer),
+                           "\\ArcName\\%s",
+                           arcName );
 
                 RtlInitAnsiString( &arcNameString, arcNameBuffer );
                 status = RtlAnsiStringToUnicodeString( &arcNameUnicodeString,
@@ -1448,17 +1452,19 @@ Return Value:
 
                     if (pnpDiskDeviceNumber.DeviceNumber == 0xFFFFFFFF) {
 
-                        sprintf( deviceNameBuffer,
-                                 "\\Device\\Harddisk%d\\Partition%d",
-                                 diskNumber,
-                                 partitionNumber+1 );
+                        _snprintf( deviceNameBuffer,
+                                   sizeof(deviceNameBuffer),
+                                   "\\Device\\Harddisk%d\\Partition%d",
+                                   diskNumber,
+                                   partitionNumber+1 );
 
                     } else {
 
-                        sprintf( deviceNameBuffer,
-                                 "\\Device\\Harddisk%d\\Partition%d",
-                                 pnpDiskDeviceNumber.DeviceNumber,
-                                 partitionNumber+1 );
+                        _snprintf( deviceNameBuffer,
+                                   sizeof(deviceNameBuffer),
+                                   "\\Device\\Harddisk%d\\Partition%d",
+                                   pnpDiskDeviceNumber.DeviceNumber,
+                                   partitionNumber+1 );
 
                     }
 
@@ -1480,10 +1486,11 @@ Return Value:
                     // check to see if this is the boot disk.
                     //
 
-                    sprintf( arcNameBuffer,
-                             "%spartition(%d)",
-                             arcName,
-                             partitionNumber+1);
+                    _snprintf( arcNameBuffer,
+                               sizeof(arcNameBuffer),
+                               "%spartition(%d)",
+                               arcName,
+                               partitionNumber+1);
 
                     RtlInitAnsiString( &arcNameString, arcNameBuffer );
                     if (RtlEqualString( &arcNameString,
@@ -1530,10 +1537,11 @@ Return Value:
                     // Add the NT ARC namespace prefix to the ARC name constructed.
                     //
 
-                    sprintf( arcNameBuffer,
-                             "\\ArcName\\%spartition(%d)",
-                             arcName,
-                             partitionNumber+1 );
+                    _snprintf( arcNameBuffer,
+                               sizeof(arcNameBuffer),
+                               "\\ArcName\\%spartition(%d)",
+                               arcName,
+                               partitionNumber+1 );
 
                     RtlInitAnsiString( &arcNameString, arcNameBuffer );
                     status = RtlAnsiStringToUnicodeString( &arcNameUnicodeString,
@@ -1771,9 +1779,10 @@ Return Value:
                         return status;
                     }
 
-                    sprintf( deviceNameBuffer,
-                             "\\Device\\CdRom%d",
-                             pnpDiskDeviceNumber.DeviceNumber );
+                    _snprintf( deviceNameBuffer,
+                               sizeof(deviceNameBuffer),
+                               "\\Device\\CdRom%d",
+                               pnpDiskDeviceNumber.DeviceNumber );
                     
                     RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
                     status = RtlAnsiStringToUnicodeString( &deviceNameUnicodeString,
@@ -1793,9 +1802,10 @@ Return Value:
                 // Fall back to legacy devices if we have no more PNP
                 //
                 } else {
-                    sprintf( deviceNameBuffer,
-                             "\\Device\\CdRom%d",
-                             currentDiskNumber );
+                    _snprintf( deviceNameBuffer,
+                               sizeof(deviceNameBuffer),
+                               "\\Device\\CdRom%d",
+                               currentDiskNumber );
                     
                     currentDiskNumber += 1;
                     RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
@@ -1877,9 +1887,10 @@ Return Value:
                     // the ARC name from the loader block.
                     //
 
-                    sprintf( arcNameBuffer,
-                             "\\ArcName\\%s",
-                             LoaderBlock->ArcBootDeviceName );
+                    _snprintf( arcNameBuffer,
+                               sizeof(arcNameBuffer),
+                               "\\ArcName\\%s",
+                               LoaderBlock->ArcBootDeviceName );
 
                     RtlInitAnsiString( &arcNameString, arcNameBuffer );
                     status = RtlAnsiStringToUnicodeString( &arcNameUnicodeString,
@@ -1976,7 +1987,7 @@ Return Value:
     // Create hal/loader partition name
     //
 
-    sprintf( arcNameBuffer, "\\ArcName\\%s", LoaderBlock->ArcHalDeviceName );
+    _snprintf( arcNameBuffer, sizeof(arcNameBuffer), "\\ArcName\\%s", LoaderBlock->ArcHalDeviceName );
     RtlInitAnsiString( &arcNameString, arcNameBuffer );
     RtlAnsiStringToUnicodeString (&IoArcHalDeviceName, &arcNameString, TRUE);
 
@@ -1984,7 +1995,7 @@ Return Value:
     // Create boot partition name
     //
 
-    sprintf( arcNameBuffer, "\\ArcName\\%s", LoaderBlock->ArcBootDeviceName );
+    _snprintf( arcNameBuffer, sizeof(arcNameBuffer), "\\ArcName\\%s", LoaderBlock->ArcBootDeviceName );
     RtlInitAnsiString( &arcNameString, arcNameBuffer );
     RtlAnsiStringToUnicodeString (&IoArcBootDeviceName, &arcNameString, TRUE);
     i = strlen (LoaderBlock->ArcBootDeviceName) + 1;
@@ -2019,9 +2030,10 @@ Return Value:
 
         if (NT_SUCCESS( status )) {
 
-            sprintf( arcNameBuffer,
-                     "\\ArcName\\%s",
-                     LoaderBlock->ArcBootDeviceName );
+            _snprintf( arcNameBuffer,
+                       sizeof(arcNameBuffer),
+                       "\\ArcName\\%s",
+                       LoaderBlock->ArcBootDeviceName );
             RtlInitAnsiString( &arcNameString, arcNameBuffer );
             status = RtlAnsiStringToUnicodeString( &arcNameUnicodeString,
                                                    &arcNameString,
@@ -2797,9 +2809,10 @@ Notes:
     // created the object.
     //
 
-    sprintf( deviceNameBuffer,
-             ArcNameFmt,
-             LoaderBlock->ArcBootDeviceName );
+    _snprintf( deviceNameBuffer,
+               sizeof(deviceNameBuffer),
+               ArcNameFmt,
+               LoaderBlock->ArcBootDeviceName );
 
     RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
 
@@ -2957,9 +2970,10 @@ Return Value:
     // driver should have created the object.
     //
 
-    sprintf( deviceNameBuffer,
-             ArcNameFmt,
-             LoaderBlock->ArcBootDeviceName );
+    _snprintf( deviceNameBuffer,
+               sizeof(deviceNameBuffer),
+               ArcNameFmt,
+               LoaderBlock->ArcBootDeviceName );
 
     RtlInitAnsiString( &deviceNameString, deviceNameBuffer );
 
@@ -2985,9 +2999,11 @@ Return Value:
 
 #if DBG
 
-        sprintf( debugBuffer, "IOINIT: unable to resolve %s, Status == %X\n",
-                 deviceNameBuffer,
-                 status );
+        _snprintf( debugBuffer,
+                   sizeof(debugBuffer),
+                   "IOINIT: unable to resolve %s, Status == %X\n",
+                   deviceNameBuffer,
+                   status );
 
         RtlInitAnsiString( &debugString, debugBuffer );
 
@@ -3062,10 +3078,11 @@ Return Value:
     NtMakeTemporaryObject( linkHandle );
     ObCloseHandle( linkHandle, KernelMode );
 
-    sprintf( deviceNameBuffer,
-             "%Z%s",
-             &arcNameString,
-             LoaderBlock->NtBootPathName );
+    _snprintf( deviceNameBuffer,
+               sizeof(deviceNameBuffer),
+               "%Z%s",
+               &arcNameString,
+               LoaderBlock->NtBootPathName );
 
     //
     // Get NT device name for \SystemRoot assignment.
@@ -3104,18 +3121,20 @@ Return Value:
 
     if (NT_SUCCESS( status )) {
 
-        sprintf( debugBuffer,
-                 "INIT: Reassigned %s => %s\n",
-                 INIT_SYSTEMROOT_LINKNAME,
-                 deviceNameBuffer );
+        _snprintf( debugBuffer,
+                   sizeof(debugBuffer),
+                   "INIT: Reassigned %s => %s\n",
+                   INIT_SYSTEMROOT_LINKNAME,
+                   deviceNameBuffer );
 
     } else {
 
-        sprintf( debugBuffer,
-                 "INIT: unable to create %s => %s, Status == %X\n",
-                 INIT_SYSTEMROOT_LINKNAME,
-                 deviceNameBuffer,
-                 status );
+        _snprintf( debugBuffer,
+                   sizeof(debugBuffer),
+                   "INIT: unable to create %s => %s, Status == %X\n",
+                   INIT_SYSTEMROOT_LINKNAME,
+                   deviceNameBuffer,
+                   status );
     }
 
     RtlInitAnsiString( &debugString, debugBuffer );
