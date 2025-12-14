@@ -1,0 +1,26 @@
+# Organization of the WRK sources
+
+The file License.txt contains the license covering use of the WRK.
+
+The public\ directory contains a number of include files shared among system
+components.  base\ntos\ contains the NTOS sources.
+
+The primary NTOS source components included in the WRK are organized as follows:
+
+    cache\  - cache manager
+    config\ - registry implementation
+    dbgk\   - user-mode debugger support
+    ex\     - executive functions (kernel heap, synchronization, time)
+    fsrtl\  - file system run-time support
+    io\     - I/O manager
+    ke\     - scheduler, CPU management, low-level synchronization
+    lpc\    - local procedure call implementation
+    mm\     - virtual memory manager
+    ob\     - kernel object manager
+    ps\     - process/thread support
+    se\     - security functions
+    wmi\    - Windows Management Instrumentation
+
+    inc\    - NTOS-only include files
+    rtl\    - kernel run-time support
+    init\   - kernel startup
