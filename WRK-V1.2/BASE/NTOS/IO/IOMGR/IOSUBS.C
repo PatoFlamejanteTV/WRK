@@ -126,7 +126,7 @@ IopDeleteSessionSymLinks(
 // afford the extra stack space are not penalized by those that cannot.
 //
 
-#if defined(_AMD64_)
+#if defined(_AMD64_) || defined(_X86_)
 
 #define IopAllocateOpenPacket() _alloca(sizeof(OPEN_PACKET))
 
