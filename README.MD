@@ -1,5 +1,15 @@
 # README
 
+## Documentation
+
+### WRK
+- [README](docs/WRK/README.md)
+- [License](docs/WRK/LICENSE.md)
+- [Bug Codes](docs/WRK/BUGCODES.md)
+
+### OZ
+- [README](docs/OZ/README.md)
+- [License](docs/OZ/LICENSE.md)
 
 ## Pre-BUILD
 
