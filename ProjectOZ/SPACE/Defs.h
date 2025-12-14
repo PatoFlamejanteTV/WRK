@@ -53,7 +53,7 @@ LookupHashEntry(
         Hashentry ***pprevlink
     );
 
-#define HANDLEVALUE(h) ((ULONGLONG)((ULONG)h >> 3))    // used for has values that have low order bits off
+#define HANDLEVALUE(h) ((ULONGLONG)((ULONG)h >> 2))    // used for has values that have low order bits off
 
 //
 // Definitions for LoadKernel
