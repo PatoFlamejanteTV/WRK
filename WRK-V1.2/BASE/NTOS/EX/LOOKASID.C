@@ -531,15 +531,17 @@ Return Value:
 --*/
 
 {
-    UNREFERENCED_PARAMETER (Depth);
-
     //
     // Initialize the lookaside list structure.
     //
 
     InitializeSListHead(&Lookaside->L.ListHead);
     Lookaside->L.Depth = ExMinimumLookasideDepth;
-    Lookaside->L.MaximumDepth = 256; //Depth;
+    if (Depth != 0) {
+        Lookaside->L.MaximumDepth = Depth;
+    } else {
+        Lookaside->L.MaximumDepth = 256;
+    }
     Lookaside->L.TotalAllocates = 0;
     Lookaside->L.AllocateMisses = 0;
     Lookaside->L.TotalFrees = 0;
@@ -666,8 +668,6 @@ Return Value:
 --*/
 
 {
-    UNREFERENCED_PARAMETER (Depth);
-
     PAGED_CODE();
 
     //
@@ -676,7 +676,11 @@ Return Value:
 
     InitializeSListHead(&Lookaside->L.ListHead);
     Lookaside->L.Depth = ExMinimumLookasideDepth;
-    Lookaside->L.MaximumDepth = 256; //Depth;
+    if (Depth != 0) {
+        Lookaside->L.MaximumDepth = Depth;
+    } else {
+        Lookaside->L.MaximumDepth = 256;
+    }
     Lookaside->L.TotalAllocates = 0;
     Lookaside->L.AllocateMisses = 0;
     Lookaside->L.TotalFrees = 0;
