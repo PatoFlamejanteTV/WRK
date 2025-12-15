@@ -1,0 +1,81 @@
++--------------------------------------- H O W T O ---------------------------------------------------------+
++--------------------------------------- Downloads ---------------------------------------------------------+
+Windows Research Kernel - http://www.facultyresourcecenter.com/curriculum/pfv.aspx?ID=7366
+VirtualBox - http://www.virtualbox.org/wiki/Downloads														
+Windows Debugging Tools - http://www.microsoft.com/whdc/devtools/debugging/installx86.mspx#a				
+Windows Server 2003 SP1 (Enterprise ou Standard) - https://www.inf.ufsc.br/interno/form_autenticar.php		
++-----------------------------------------------------------------------------------------------------------+
+																											
++--------------------------------------- Instalação --------------------------------------------------------+
+																											
+Instale o Windows Debugging Tools (acho que não tem nenhum mistério)										
+Adicionar na variável de ambiente PATH o caminho: C:\Program Files\Debugging Tools for Windows (x86)		
+(caso tenha sido nesse caminho que vc tenha instalado)														
+																										
+Extrair WindowsResearchKernel-WRK.zip onde você quiser														
+Duplo clique em WRKCopy.bat, será criada a pasta C:\WRK-v1.2												
+Adicionar na variável de ambiente PATH o caminho: C:\WRK-v1.2\tools\x86 									
+Clique com o botão direito no arquivo C:\WRK-v1.2\WRKEnv.bat e coloque para editar com o bloco de notas	
+Altere essa parte 'C:\Program Files\Debugging Tools for Windows' caso o seu caminho para o Debugging tools 
+seja diferente																								
+Duplo clique em Build (a primeira vez demora um pouco)														
+																										
+Instale o VirtualBox (acho que não tem nenhum mistério)													
+Abra o VirtualBox																							
+Clique em Novo, clique em próximo, escolha o nome que vc quiser, e escolha Windows 2003, clique em próximo	
+Eu aumento pra 512 de ram, mas isso dá pra mudar mais tarde, coloque quanto quiser, clique em próximo		
+Deixe as opções de disco como estão, clique em próximo e próximo mais uma vez								
+Eu uso armazenamento de tamanho fixo, mas use o que quiser, clique em próximo								
+Escolha onde esse disco será criado, pode ser no lugar padrão mesmo, e escolha quanta memória quer que ele	
+tenha, 20 GB é muito, eu coloco 5 GB, clique em próximo													
+Clique em finalizar																						
+																											
+Inicie a máquina e vai abrir mais um assistente, clique em próximo											
+Em baixo, selecione 'Arquivo de imagem' e localize a ISO do windows que vc baixou, clique em próximo		
+Clique em finalizar																						
+																											
+Abrirá então a instalação do windows, siga os passos e instale conforme as configurações padrões do Windows
+Quando finalizar a instalação e vc já estiver na área de trabalho, clique em Dispositivos (em cima) e 		
+selecione a opção 'Instalar Adicionais para Convidado'														
+Abrirá mais um assistente, siga as instruções, não reinicie, desligue a máquina							
+																											
+Na tela inicial do VirtualBox, clique com o botão direito na máquina que vc criou e vá em configurações	
+No item Portas Seriais ative a opção 'Habilitar Porta Serial'												
+Número da porta: COM1																						
+Modo da porta: Pipe no Hospedeiro																			
+Selecione 'Criar Pipe'																						
+Porta/Caminho do Arquivo: \\.\pipe\debug																	
+No item Pastas Compartilhadas																				
+Clique em acrescentar pasta e procure por C:\WRK-v1.2 e adicione											
+																											
+Inicie novamente sua máquina virtual																		
+Clique com o botão direito no Meu Computador, aba avançado, na parte de Startup and Recovery clique no 	
+botão settings e clique no botão edit																		
+Adicione as seguintes linhas:																				
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Server 2003, Debug" /noexecute=optout /fastdetect /debug /debugport=com1											
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Research Kernel, Debug" /noexecute=optout /fastdetect /kernel=wrkx86.exe /hal=halacpim.dll /debug /debugport=com1
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Research Kernel" /noexecute=optout /fastdetect /kernel=wrkx86.exe /hal=halacpim.dll							
+Ao final deve ficar dessa forma:																																	
+[boot loader]																																						
+timeout=30																																							
+default=multi(0)disk(0)rdisk(0)partition(1)\WINDOWS																													
+[operating systems]																																					
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Server 2003, Standard" /noexecute=optout /fastdetect															
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Server 2003, Debug" /noexecute=optout /fastdetect /debug /debugport=com1										
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Research Kernel, Debug" /noexecute=optout /fastdetect /kernel=wrkx86.exe /hal=halacpim.dll /debug /debugport=com1
+multi(0)disk(0)rdisk(0)partition(1)\WINDOWS="Windows Research Kernel" /noexecute=optout /fastdetect /kernel=wrkx86.exe /hal=halacpim.dll
+Salve e feche																								
+
+Vá para o My Network Places																					
+Clique em Entire Network																					
+Clique em VirtualBox Shared Folder																			
+Entre em \\VBOXSVR\WRK-v1.2\base\ntos\BUILD\EXE																
+Copie o arquivo wrkx86.exe para a pasta System32 da sua máquina virtual										
+Entre em \\VBOXSVR\WRK-v1.2\WS03SP1HALS\x86\halacpim														
+Copie o arquivo halacpim.dll para a pasta System32 da sua máquina virtual									
+																											
+Na sua máquina HOST abra a pasta C:\WRK-v1.2																
+Dê duplo clique em WRKDebug.bat (Windows Debugging Tool deve abrir e aparece a msg Waiting to reconnect...)
+																											
+Reinicie sua máquina virtual e entre na 3ª opção, se o SO inicializar deu tudo certo, parabéns!
++-----------------------------------------------------------------------------------------------------------+
