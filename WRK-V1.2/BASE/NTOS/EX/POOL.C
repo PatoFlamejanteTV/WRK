@@ -149,6 +149,7 @@ SIZE_T PoolTrackTableMask;
 
 PPOOL_TRACKER_TABLE PoolTrackTableExpansion;
 SIZE_T PoolTrackTableExpansionSize;
+SIZE_T PoolTrackTableExpansionMask;
 SIZE_T PoolTrackTableExpansionPages;
 
 #define DEFAULT_BIGPAGE_TABLE 4096
@@ -3471,13 +3472,14 @@ Environment:
 
 {
     ULONG Hash;
+    ULONG Index;
     KIRQL OldIrql;
     ULONG BigPages;
     SIZE_T NewSize;
-    SIZE_T SizeInBytes;
     SIZE_T NewSizeInBytes;
     PPOOL_TRACKER_TABLE OldTable;
     PPOOL_TRACKER_TABLE NewTable;
+    PPOOL_TRACKER_TABLE Entry;
 
     //
     // The protected pool bit has already been stripped.
@@ -3515,71 +3517,66 @@ Environment:
         return;
     }
 
-    //
-    // Linear search through the expansion table.  This is ok because
-    // the case of no free entries in the built-in table is extremely rare.
-    //
-
     ExAcquireSpinLock (&ExpTaggedPoolLock, &OldIrql);
 
-    for (Hash = 0; Hash < PoolTrackTableExpansionSize; Hash += 1) {
+    if (PoolTrackTableExpansionSize != 0) {
 
-        if (PoolTrackTableExpansion[Hash].Key == Key) {
-            break;
+        Hash = POOLTAG_HASH (Key, PoolTrackTableExpansionMask);
+        Index = Hash;
+
+        do {
+            Entry = &PoolTrackTableExpansion[Hash];
+
+            if (Entry->Key == Key) {
+                // Found match
+                break;
+            }
+
+            if (Entry->Key == 0) {
+                // Found free slot
+                ASSERT (PoolTrackTable[PoolTrackTableSize - 1].Key == 0);
+                Entry->Key = Key;
+                break;
+            }
+
+            Hash = (Hash + 1) & (ULONG)PoolTrackTableExpansionMask;
+
+        } while (Hash != Index);
+
+        if (Hash != Index || Entry->Key == Key) {
+
+            //
+            // Found entry or empty slot
+            //
+
+            if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
+                Entry->PagedAllocs += 1;
+                Entry->PagedBytes += NumberOfBytes;
+            }
+            else {
+                Entry->NonPagedAllocs += 1;
+                Entry->NonPagedBytes += NumberOfBytes;
+            }
+
+            ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
+            return;
         }
-
-        if (PoolTrackTableExpansion[Hash].Key == 0) {
-            ASSERT (PoolTrackTable[PoolTrackTableSize - 1].Key == 0);
-            PoolTrackTableExpansion[Hash].Key = Key;
-            break;
-        }
-    }
-
-    if (Hash != PoolTrackTableExpansionSize) {
-
-        //
-        // The entry was found (or created).  Update the other fields now.
-        //
-
-        if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
-            PoolTrackTableExpansion[Hash].PagedAllocs += 1;
-            PoolTrackTableExpansion[Hash].PagedBytes += NumberOfBytes;
-        }
-        else {
-            PoolTrackTableExpansion[Hash].NonPagedAllocs += 1;
-            PoolTrackTableExpansion[Hash].NonPagedBytes += NumberOfBytes;
-        }
-
-        ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
-        return;
     }
 
     //
-    // The entry was not found and the expansion table is full (or nonexistent).
-    // Try to allocate a larger expansion table now.
+    // Expansion needed.
     //
 
     if (PoolTrackTable[PoolTrackTableSize - 1].Key != 0) {
 
         //
         // The overflow bucket has been used so expansion of the tracker table
-        // is not allowed because a subsequent free of a tag can go negative
-        // as the original allocation is in overflow and a newer allocation
-        // may be distinct.
-        //
-
-        //
-        // Use the very last entry as a bit bucket for overflows.
+        // is not allowed. Use overflow bucket in main table.
         //
 
         ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
 
         Hash = (ULONG)PoolTrackTableSize - 1;
-
-        //
-        // Update the fields with interlocked operations as other
-        // threads may also have begun doing so by this point.
-        //
 
         if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
             InterlockedIncrement ((PLONG) &PoolTrackTable[Hash].PagedAllocs);
@@ -3596,46 +3593,55 @@ Environment:
         return;
     }
 
-    SizeInBytes = PoolTrackTableExpansionSize * sizeof(POOL_TRACKER_TABLE);
-
     //
-    // Use as much of the slush in the final page as possible.
+    // Calculate new size. Start with 128 if empty, else double.
     //
 
-    NewSizeInBytes = (PoolTrackTableExpansionPages + 1) << PAGE_SHIFT;
-    NewSize = NewSizeInBytes / sizeof (POOL_TRACKER_TABLE);
+    if (PoolTrackTableExpansionSize == 0) {
+        NewSize = 128;
+    } else {
+        NewSize = PoolTrackTableExpansionSize * 2;
+    }
+
     NewSizeInBytes = NewSize * sizeof(POOL_TRACKER_TABLE);
 
     NewTable = MiAllocatePoolPages (NonPagedPool, NewSizeInBytes);
 
     if (NewTable != NULL) {
 
+        RtlZeroMemory (NewTable, NewSizeInBytes);
+
         if (PoolTrackTableExpansion != NULL) {
 
             //
-            // Copy all the existing entries into the new table.
+            // Rehash existing entries into new table.
             //
 
-            RtlCopyMemory (NewTable,
-                           PoolTrackTableExpansion,
-                           SizeInBytes);
+            for (Index = 0; Index < PoolTrackTableExpansionSize; Index += 1) {
+                if (PoolTrackTableExpansion[Index].Key != 0) {
+                    Hash = POOLTAG_HASH (PoolTrackTableExpansion[Index].Key, NewSize - 1);
+                    while (NewTable[Hash].Key != 0) {
+                        Hash = (Hash + 1) & (ULONG)(NewSize - 1);
+                    }
+                    NewTable[Hash] = PoolTrackTableExpansion[Index];
+                }
+            }
         }
-
-        RtlZeroMemory ((PVOID)(NewTable + PoolTrackTableExpansionSize),
-                       NewSizeInBytes - SizeInBytes);
 
         OldTable = PoolTrackTableExpansion;
 
         PoolTrackTableExpansion = NewTable;
         PoolTrackTableExpansionSize = NewSize;
-        PoolTrackTableExpansionPages += 1;
+        PoolTrackTableExpansionMask = NewSize - 1;
 
         //
-        // Recursively call ourself to insert the new table entry.  This entry
-        // must be inserted before releasing the tagged spinlock because
-        // another thread may be further growing the table and as soon as we
-        // release the spinlock, that thread may grow and try to free our
-        // new table !
+        // PoolTrackTableExpansionPages update. Calculate pages for NewSizeInBytes.
+        //
+        BigPages = (ULONG) BYTES_TO_PAGES(NewSizeInBytes);
+        PoolTrackTableExpansionPages = BigPages;
+
+        //
+        // Recursively call ourself to insert the new table entry.
         //
 
         ExpInsertPoolTracker ('looP',
@@ -3649,6 +3655,10 @@ Environment:
         //
 
         if (OldTable != NULL) {
+
+            // Calculate old size in pages
+            // OldSize was PoolTrackTableExpansionSize / 2 * sizeof...
+            // Or easier: use MiFreePoolPages return value.
 
             BigPages = MiFreePoolPages (OldTable);
 
@@ -3666,7 +3676,7 @@ Environment:
     else {
 
         //
-        // Use the very last entry as a bit bucket for overflows.
+        // Allocation failed. Use overflow bucket in main table.
         //
 
         Hash = (ULONG)PoolTrackTableSize - 1;
@@ -3676,11 +3686,6 @@ Environment:
         PoolTrackTable[Hash].Key = 'lfvO';
 
         ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
-
-        //
-        // Update the fields with interlocked operations as other
-        // threads may also have begun doing so by this point.
-        //
 
         if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
             InterlockedIncrement ((PLONG) &PoolTrackTable[Hash].PagedAllocs);
@@ -3738,8 +3743,10 @@ Return Value:
 
 {
     ULONG Hash;
+    ULONG Index;
     KIRQL OldIrql;
     PPOOL_TRACKER_TABLE TrackTable;
+    PPOOL_TRACKER_TABLE Entry;
 #if !defined (NT_UP)
     ULONG Processor;
 #endif
@@ -3762,40 +3769,43 @@ Return Value:
         goto OverflowEntry;
     }
 
-    //
-    // Linear search through the expansion table.  This is ok because
-    // the existence of an expansion table at all is extremely rare.
-    //
-
     ExAcquireSpinLock (&ExpTaggedPoolLock, &OldIrql);
 
-    for (Hash = 0; Hash < PoolTrackTableExpansionSize; Hash += 1) {
+    if (PoolTrackTableExpansionSize != 0) {
 
-        if (PoolTrackTableExpansion[Hash].Key == Key) {
+        Hash = POOLTAG_HASH (Key, PoolTrackTableExpansionMask);
+        Index = Hash;
 
-            if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
-                ASSERT (PoolTrackTableExpansion[Hash].PagedAllocs != 0);
-                ASSERT (PoolTrackTableExpansion[Hash].PagedAllocs >=
-                        PoolTrackTableExpansion[Hash].PagedFrees);
-                ASSERT (PoolTrackTableExpansion[Hash].PagedBytes >= NumberOfBytes);
-                PoolTrackTableExpansion[Hash].PagedFrees += 1;
-                PoolTrackTableExpansion[Hash].PagedBytes -= NumberOfBytes;
+        do {
+            Entry = &PoolTrackTableExpansion[Hash];
+
+            if (Entry->Key == Key) {
+                if ((PoolType & BASE_POOL_TYPE_MASK) == PagedPool) {
+                    ASSERT (Entry->PagedAllocs != 0);
+                    ASSERT (Entry->PagedAllocs >= Entry->PagedFrees);
+                    ASSERT (Entry->PagedBytes >= NumberOfBytes);
+                    Entry->PagedFrees += 1;
+                    Entry->PagedBytes -= NumberOfBytes;
+                }
+                else {
+                    ASSERT (Entry->NonPagedAllocs != 0);
+                    ASSERT (Entry->NonPagedAllocs >= Entry->NonPagedFrees);
+                    ASSERT (Entry->NonPagedBytes >= NumberOfBytes);
+                    Entry->NonPagedFrees += 1;
+                    Entry->NonPagedBytes -= NumberOfBytes;
+                }
+
+                ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
+                return;
             }
-            else {
-                ASSERT (PoolTrackTableExpansion[Hash].NonPagedAllocs != 0);
-                ASSERT (PoolTrackTableExpansion[Hash].NonPagedAllocs >=
-                        PoolTrackTableExpansion[Hash].NonPagedFrees);
-                ASSERT (PoolTrackTableExpansion[Hash].NonPagedBytes >= NumberOfBytes);
-                PoolTrackTableExpansion[Hash].NonPagedFrees += 1;
-                PoolTrackTableExpansion[Hash].NonPagedBytes -= NumberOfBytes;
+
+            if (Entry->Key == 0) {
+                break;
             }
 
-            ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
-            return;
-        }
-        if (PoolTrackTableExpansion[Hash].Key == 0) {
-            break;
-        }
+            Hash = (Hash + 1) & (ULONG)PoolTrackTableExpansionMask;
+
+        } while (Hash != Index);
     }
 
     ExReleaseSpinLock (&ExpTaggedPoolLock, OldIrql);
