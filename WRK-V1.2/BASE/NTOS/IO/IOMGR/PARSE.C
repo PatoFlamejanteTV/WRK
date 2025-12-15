@@ -2148,6 +2148,7 @@ Return Value:
     ULONG length;
     BOOLEAN deviceNameOverflow;
     BOOLEAN dosLookupSuccess = 0;
+    ULONGLONG stackBuffer[512 / sizeof(ULONGLONG)];
 
     UNREFERENCED_PARAMETER( HasObjectName );
 
@@ -2169,7 +2170,11 @@ Return Value:
     // Begin by allocating a buffer in which to build the name of the file.
     //
 
-    buffer = ExAllocatePoolWithTag( PagedPool, Length, '  oI' );
+    if (Length <= sizeof(stackBuffer)) {
+        buffer = (PUCHAR) stackBuffer;
+    } else {
+        buffer = ExAllocatePoolWithTag( PagedPool, Length, '  oI' );
+    }
 
     if (!buffer) {
         return STATUS_INSUFFICIENT_RESOURCES;
@@ -2455,7 +2460,9 @@ Return Value:
         // Finally, free the temporary buffer.
         //
 
-        ExFreePool( buffer );
+        if (buffer != (PUCHAR) stackBuffer) {
+            ExFreePool( buffer );
+        }
     }
 
     return status;
